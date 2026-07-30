@@ -146,7 +146,7 @@ export function scoreDrawing(
   options?: { passPercent?: number; inkWidth?: number },
 ): ScoreResult {
   const passPercent = options?.passPercent ?? DRAW_PASS_PERCENT
-  const inkWidth = options?.inkWidth ?? 14
+  const inkWidth = options?.inkWidth ?? 17
   const { width, height, silhouette } = template
 
   if (flattenStrokes(userStrokes).length < 8) {
