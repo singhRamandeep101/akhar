@@ -23,7 +23,7 @@ export function PlaySoundButton({ src, label = 'Play sound', className = 'btn bt
       </button>
       {(status === 'missing' || status === 'error') && (
         <p className="audio-missing" role="status">
-          Audio missing — run <code>npm run generate-audio</code> after adding Azure keys.
+          Couldn’t play this clip. Check your volume, then tap again.
         </p>
       )}
     </div>

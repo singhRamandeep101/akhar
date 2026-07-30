@@ -1,6 +1,7 @@
 import { parse, type Font, type Path } from 'opentype.js'
+import { assetUrl } from './audio'
 
-const FONT_URL = '/fonts/NotoSansGurmukhi-Bold.ttf'
+const FONT_URL = assetUrl('/fonts/NotoSansGurmukhi-Bold.ttf')
 
 export type Point = { x: number; y: number }
 

@@ -3,14 +3,23 @@ let playGeneration = 0
 
 export type PlayResult = 'ok' | 'missing' | 'error' | 'stopped'
 
-/** Play a bundled MP3. Never uses speechSynthesis. */
+/** Resolve `/audio/...` against Vite base (needed on GitHub Pages `/akhar/`). */
+export function assetUrl(path: string): string {
+  if (!path) return path
+  if (/^https?:\/\//i.test(path)) return path
+  const base = import.meta.env.BASE_URL || '/'
+  const normalized = path.replace(/^\//, '')
+  return `${base}${normalized}`
+}
+
+/** Play a bundled MP3. Never uses speechSynthesis. Visitors never need Azure. */
 export async function playAudio(src: string): Promise<PlayResult> {
   if (!src) return 'missing'
 
   stopAudio()
   const gen = ++playGeneration
 
-  const audio = new Audio(src)
+  const audio = new Audio(assetUrl(src))
   current = audio
 
   return new Promise((resolve) => {
