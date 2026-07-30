@@ -13,6 +13,8 @@ type Props = {
   className?: string
   onScore?: (result: ScoreResult) => void
   autoDemo?: boolean
+  /** When false, blank board (memory practice). Default true for graded trace. */
+  showGuide?: boolean
 }
 
 type Stroke = Point[]
@@ -21,7 +23,7 @@ type Stroke = Point[]
 const USER_INK_WIDTH = 14
 
 export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function DrawingBoard(
-  { ghostGlyph, className = '', onScore, autoDemo = true },
+  { ghostGlyph, className = '', onScore, autoDemo = true, showGuide = true },
   ref,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -125,8 +127,7 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     if (revealY != null) {
       paintGhost(ctx, template)
       paintFillReveal(ctx, template, revealY)
-    } else {
-      // Keep a faint guide for tracing — freeform+Latin matching was too unreliable
+    } else if (showGuide) {
       paintGhost(ctx, template)
     }
     paintInk(ctx, strokesRef.current)
@@ -171,7 +172,7 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     stopDemo()
     const dpr = window.devicePixelRatio || 1
     const w = Math.max(280, parent.clientWidth)
-    const h = Math.max(220, Math.min(320, w * 0.7))
+    const h = Math.max(260, Math.min(420, w * 0.85))
     canvas.width = w * dpr
     canvas.height = h * dpr
     canvas.style.width = `${w}px`
@@ -219,6 +220,11 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ghostGlyph])
 
+  useEffect(() => {
+    if (ready) redraw()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showGuide, ready])
+
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
@@ -229,6 +235,7 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     if (demoPlaying || !ready) return
     const canvas = canvasRef.current
     if (!canvas) return
+    e.preventDefault()
     canvas.setPointerCapture(e.pointerId)
     drawing.current = true
     currentRef.current = [pos(e)]
@@ -237,6 +244,7 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current) return
+    e.preventDefault()
     currentRef.current.push(pos(e))
     redraw()
   }
@@ -292,6 +300,7 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
       <div className="drawing-frame">
         <canvas
           ref={canvasRef}
+          className="draw-canvas"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

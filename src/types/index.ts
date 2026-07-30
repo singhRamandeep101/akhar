@@ -4,9 +4,7 @@ export type Letter = {
   name: string
   romanization: string
   soundHint: string
-  /** Gurmukhi text sent to Azure when generating the MP3. */
   ttsText: string
-  /** Bundled clip path under /public. */
   audio: string
   examplePa?: string
   exampleEn?: string
@@ -32,6 +30,8 @@ export type Word = {
   letterIds: string[]
   ttsText: string
   audio: string
+  /** Picture stand-in for image↔word drills (emoji). */
+  emoji?: string
 }
 
 export type UnitKind = 'letters' | 'matras' | 'words'
@@ -55,13 +55,40 @@ export type QuizScore = {
   at: string
 }
 
+/** Spaced-repetition card for a letter / matra / word id. */
+export type MemoryCard = {
+  itemId: string
+  /** 0–5 ease / strength bucket */
+  box: number
+  dueAt: string
+  lastResult: 'good' | 'again' | null
+  seenAt: string
+}
+
+export type StreakState = {
+  current: number
+  best: number
+  lastActiveDate: string | null
+}
+
+export type DailyGoalState = {
+  date: string
+  target: number
+  completed: number
+}
+
 export type ProgressState = {
   version: 1
   completedLessons: string[]
-  /** Letter lessons where drawing score passed (≥72%). */
   drawingPassed: string[]
   unlockedUnitIndex: number
   quizScores: QuizScore[]
   weakItems: string[]
   lastVisited: string | null
+  streak: StreakState
+  memory: Record<string, MemoryCard>
+  dailyGoal: DailyGoalState
+  onboardingDone: boolean
 }
+
+export type StrengthLevel = 'cold' | 'fading' | 'fresh' | 'strong'

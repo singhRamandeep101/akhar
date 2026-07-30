@@ -7,6 +7,7 @@ export type QuizQuestion = {
   id: string
   prompt: string
   promptGlyph?: string
+  promptEmoji?: string
   audioSrc?: string
   /** When true, UI should auto-play audio (no name written in the prompt). */
   autoPlayAudio?: boolean
@@ -267,6 +268,21 @@ export function buildQuiz(unit: CurriculumUnit): QuizQuestion[] {
         })
       }
 
+      if (word.emoji) {
+        const distractors = pickHardDistractors(pool, id, 4, [])
+        questions.push({
+          id: `${id}-pic`,
+          prompt: 'Which word matches this picture?',
+          promptEmoji: word.emoji,
+          options: shuffle([word, ...distractors]).map((w) => ({
+            id: w.id,
+            label: w.gurmukhi,
+          })),
+          correctId: id,
+          weakKey: id,
+        })
+      }
+
       {
         const distractors = pickHardDistractors(pool, id, 4, [])
         questions.push({
@@ -274,7 +290,7 @@ export function buildQuiz(unit: CurriculumUnit): QuizQuestion[] {
           prompt: `Which word means “${word.meaning}”?`,
           options: shuffle([word, ...distractors]).map((w) => ({
             id: w.id,
-            label: w.gurmukhi,
+            label: `${w.emoji ? `${w.emoji} ` : ''}${w.gurmukhi}`,
           })),
           correctId: id,
           weakKey: id,

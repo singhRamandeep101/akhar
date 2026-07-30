@@ -47,6 +47,7 @@ export function LearnWord() {
 
       <div className="glyph-stage">
         <p className="eyebrow">Word</p>
+        {word.emoji && <div className="pic-emoji big">{word.emoji}</div>}
         <div className="glyph-display word-glyph" lang="pa">
           {word.gurmukhi}
         </div>

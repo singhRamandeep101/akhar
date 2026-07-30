@@ -643,6 +643,237 @@ p {
   font-size: 0.75rem;
 }
 
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.streak-pill {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.habit-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin: 1.25rem 0 1rem;
+}
+
+.habit-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.75rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.habit-num {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.habit-chip small {
+  opacity: 0.7;
+}
+
+.mini-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  margin-top: 0.35rem;
+  overflow: hidden;
+}
+
+.mini-fill {
+  height: 100%;
+  background: var(--saffron);
+}
+
+.due-card {
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.15rem;
+  border-radius: 14px;
+  background: rgba(15, 107, 92, 0.18);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+}
+
+.due-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.due-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.due-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.due-list a,
+.due-list > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.2);
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.85rem;
+}
+
+.quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.strength-dot {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.strength-dot.cold {
+  background: rgba(120, 120, 120, 0.25);
+}
+.strength-dot.fading {
+  background: rgba(217, 119, 6, 0.25);
+  border-color: rgba(217, 119, 6, 0.45);
+}
+.strength-dot.fresh {
+  background: rgba(15, 107, 92, 0.3);
+}
+.strength-dot.strong {
+  background: rgba(34, 197, 94, 0.28);
+}
+
+.onboard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(8, 20, 14, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.onboard-card {
+  max-width: 26rem;
+  width: 100%;
+  background: linear-gradient(160deg, #163528, #0f2a1f);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 1.5rem 1.35rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.onboard-steps {
+  margin: 1rem 0 1.25rem;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.onboard-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.onboard-steps span {
+  opacity: 0.85;
+  font-size: 0.92rem;
+}
+
+.guide-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.draw-canvas {
+  touch-action: none;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.drawing-frame {
+  touch-action: none;
+}
+
+.pronounce-compare {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: min(100%, 28rem);
+}
+
+.pic-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.pic-emoji.big {
+  font-size: 3.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.option-sub {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-top: 0.2rem;
+}
+
+.miss-list {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.miss-list li {
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.due-actions li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -665,9 +896,18 @@ p {
 }
 
 @media (max-width: 480px) {
+  .habit-row {
+    grid-template-columns: 1fr;
+  }
+
   .path-actions .btn,
   .lesson-footer .btn {
     flex: 1;
     text-align: center;
+  }
+
+  .drawing-frame canvas,
+  .draw-canvas {
+    min-height: 280px;
   }
 }

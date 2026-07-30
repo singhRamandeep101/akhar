@@ -1,15 +1,16 @@
 {
   "name": "Akhar — Punjabi Learning Path",
   "short_name": "Akhar",
-  "description": "Personal Gurmukhi curriculum: learn, write, quiz, read words.",
-  "start_url": "/",
+  "description": "Learn Gurmukhi: hear, trace, quiz, review.",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#e8f0e4",
+  "background_color": "#0f2a1f",
   "theme_color": "#0f6b5c",
   "lang": "en",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "./favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

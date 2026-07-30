@@ -8,12 +8,14 @@ import {
 } from 'react'
 import type { ProgressState } from '../types'
 import {
+  completeOnboarding,
   defaultProgress,
   importProgress,
   loadProgress,
   markDrawingPassed,
   markLessonComplete,
   recordQuiz,
+  recordReviewResult,
   saveProgress,
   setLastVisited,
 } from './progress'
@@ -22,7 +24,15 @@ type ProgressContextValue = {
   progress: ProgressState
   completeLesson: (lessonId: string) => void
   passDrawing: (lessonId: string) => void
-  finishQuiz: (unitId: string, score: number, total: number, weakItems: string[]) => void
+  finishQuiz: (
+    unitId: string,
+    score: number,
+    total: number,
+    weakItems: string[],
+    correctItems?: string[],
+  ) => void
+  reviewItem: (itemId: string, good: boolean) => void
+  finishOnboarding: () => void
   visit: (path: string) => void
   resetAll: () => void
   exportJson: () => string
@@ -42,8 +52,19 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     setProgress((p) => markDrawingPassed(p, lessonId))
   }, [])
 
-  const finishQuiz = useCallback((unitId: string, score: number, total: number, weakItems: string[]) => {
-    setProgress((p) => recordQuiz(p, unitId, score, total, weakItems))
+  const finishQuiz = useCallback(
+    (unitId: string, score: number, total: number, weakItems: string[], correctItems: string[] = []) => {
+      setProgress((p) => recordQuiz(p, unitId, score, total, weakItems, correctItems))
+    },
+    [],
+  )
+
+  const reviewItem = useCallback((itemId: string, good: boolean) => {
+    setProgress((p) => recordReviewResult(p, itemId, good))
+  }, [])
+
+  const finishOnboarding = useCallback(() => {
+    setProgress((p) => completeOnboarding(p))
   }, [])
 
   const visit = useCallback((path: string) => {
@@ -68,12 +89,25 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       completeLesson,
       passDrawing,
       finishQuiz,
+      reviewItem,
+      finishOnboarding,
       visit,
       resetAll,
       exportJson,
       importJson,
     }),
-    [progress, completeLesson, passDrawing, finishQuiz, visit, resetAll, exportJson, importJson],
+    [
+      progress,
+      completeLesson,
+      passDrawing,
+      finishQuiz,
+      reviewItem,
+      finishOnboarding,
+      visit,
+      resetAll,
+      exportJson,
+      importJson,
+    ],
   )
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>

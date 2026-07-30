@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { DrawingBoard } from '../components/DrawingBoard'
 import { PlaySoundButton } from '../components/PlaySoundButton'
+import { PronounceCompare } from '../components/PronounceCompare'
 import { curriculum, lessonKey } from '../data/curriculum'
 import { letterById } from '../data/letters'
 import type { ScoreResult } from '../lib/drawingScore'
@@ -19,6 +20,7 @@ export function LearnLetter() {
   const unitIndex = curriculum.findIndex((u) => u.id === unitId)
   const letter = letterById[itemId]
   const key = lessonKey(unitId, itemId)
+  const [showGuide, setShowGuide] = useState(true)
 
   useAutoPlayAudio(letter?.audio)
 
@@ -71,17 +73,27 @@ export function LearnLetter() {
         </p>
         <p className="hint">{letter.soundHint}</p>
         <PlaySoundButton src={letter.audio} />
+        <PronounceCompare nativeSrc={letter.audio} label="Say it like the recording" />
       </div>
 
       <section className="write-section">
         <h2>1. Watch · 2. Trace · 3. Check</h2>
         <p>
-          Watch the letter appear, then trace the faint guide on the board. Tap{' '}
-          <strong>Check drawing</strong> — score at least {DRAW_PASS_PERCENT}% to unlock Next. Stay on the
-          letter shape; a random Latin letter won’t cover it.
+          Watch the letter appear, then trace the faint guide. Tap <strong>Check drawing</strong> — score
+          at least {DRAW_PASS_PERCENT}% to unlock Next.
           {canAdvance ? ' Drawing passed for this letter.' : ''}
         </p>
-        <DrawingBoard key={key} ghostGlyph={letter.glyph} onScore={onScore} autoDemo />
+        <label className="guide-toggle">
+          <input type="checkbox" checked={showGuide} onChange={(e) => setShowGuide(e.target.checked)} />
+          Show guide (off = memory practice)
+        </label>
+        <DrawingBoard
+          key={key}
+          ghostGlyph={letter.glyph}
+          onScore={onScore}
+          autoDemo
+          showGuide={showGuide}
+        />
       </section>
 
       <div className="lesson-footer">

@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { PlaySoundButton } from '../components/PlaySoundButton'
 import { PASS_PERCENT, curriculum } from '../data/curriculum'
-import { hasPassedQuiz, isUnitLessonsDone, isUnitUnlocked } from '../lib/progress'
+import { letterById } from '../data/letters'
+import { matraById } from '../data/matras'
+import { wordById } from '../data/words'
+import { hasPassedQuiz, isUnitLessonsDone, isUnitUnlocked, quizBest } from '../lib/progress'
 import { useProgress } from '../lib/ProgressContext'
 import { buildQuiz, type QuizQuestion } from '../lib/quiz'
 import { useAutoPlayAudio } from '../lib/useAutoPlayAudio'
@@ -22,9 +25,19 @@ export function UnitQuiz() {
 
   const [session, setSession] = useState<Session | null>(null)
   const [finished, setFinished] = useState(false)
-  const [result, setResult] = useState<{ score: number; total: number; weak: string[] } | null>(null)
+  const [reviewingMisses, setReviewingMisses] = useState(false)
+  const [result, setResult] = useState<{
+    score: number
+    total: number
+    percent: number
+    weak: string[]
+    correct: string[]
+    misses: { q: QuizQuestion; chosen: string | null }[]
+    prevBest: number | null
+    newBest: boolean
+  } | null>(null)
 
-  const currentQ = session && !finished ? session.questions[session.index] : null
+  const currentQ = session && !finished && !reviewingMisses ? session.questions[session.index] : null
   useAutoPlayAudio(currentQ?.autoPlayAudio ? currentQ.audioSrc : undefined)
 
   if (!unit) return <Navigate to="/" replace />
@@ -32,6 +45,7 @@ export function UnitQuiz() {
 
   const lessonsDone = isUnitLessonsDone(progress, unitIndex)
   const alreadyPassed = hasPassedQuiz(progress, unit.id)
+  const prevBest = quizBest(progress, unit.id)
 
   const start = () => {
     const questions = buildQuiz(unit)
@@ -41,6 +55,7 @@ export function UnitQuiz() {
       answers: questions.map(() => null),
     })
     setFinished(false)
+    setReviewingMisses(false)
     setResult(null)
   }
 
@@ -53,25 +68,39 @@ export function UnitQuiz() {
     setSession({ ...session, answers: nextAnswers })
   }
 
-  const goNext = () => {
-    if (!session) return
-    const { questions, index, answers } = session
-    if (index + 1 >= questions.length) {
-      let score = 0
-      const weak: string[] = []
-      questions.forEach((q, i) => {
-        if (answers[i] === q.correctId) score += 1
-        else if (!weak.includes(q.weakKey)) weak.push(q.weakKey)
-      })
-      finishQuiz(unitId, score, questions.length, weak)
-      setResult({ score, total: questions.length, weak })
-      setFinished(true)
-      return
-    }
-    setSession({ ...session, index: index + 1 })
+  const finalize = (sess: Session) => {
+    const { questions, answers } = sess
+    let score = 0
+    const weak: string[] = []
+    const correct: string[] = []
+    const misses: { q: QuizQuestion; chosen: string | null }[] = []
+    questions.forEach((q, i) => {
+      if (answers[i] === q.correctId) {
+        score += 1
+        if (!correct.includes(q.weakKey)) correct.push(q.weakKey)
+      } else {
+        if (!weak.includes(q.weakKey)) weak.push(q.weakKey)
+        misses.push({ q, chosen: answers[i] })
+      }
+    })
+    const percent = Math.round((score / questions.length) * 100)
+    const newBest = prevBest == null || percent > prevBest
+    finishQuiz(unitId, score, questions.length, weak, correct)
+    setResult({ score, total: questions.length, percent, weak, correct, misses, prevBest, newBest })
+    if (misses.length) setReviewingMisses(true)
+    else setFinished(true)
   }
 
-  if (!session && !finished) {
+  const goNext = () => {
+    if (!session) return
+    if (session.index + 1 >= session.questions.length) {
+      finalize(session)
+      return
+    }
+    setSession({ ...session, index: session.index + 1 })
+  }
+
+  if (!session && !finished && !reviewingMisses) {
     return (
       <div className="quiz intro">
         <Link to="/">← Path</Link>
@@ -81,8 +110,9 @@ export function UnitQuiz() {
           <strong>{PASS_PERCENT}%</strong> or higher to unlock the next unit.
           {alreadyPassed ? ' You already passed — retake anytime for practice.' : ''}
         </p>
+        {prevBest != null && <p className="hint">Personal best: {prevBest}%</p>}
         <p className="hint">
-          Expect look-alike traps, audio-only questions, and fewer free hints. Misses show up in Review.
+          Expect look-alike traps, audio-only questions, and fewer free hints. Misses go to Review.
         </p>
         {!lessonsDone ? (
           <p className="warn">
@@ -98,16 +128,52 @@ export function UnitQuiz() {
     )
   }
 
+  if (reviewingMisses && result) {
+    return (
+      <div className="quiz result">
+        <h1>Review misses</h1>
+        <p className="hint">Quick look before your score — spaced review starts here.</p>
+        <ul className="miss-list">
+          {result.misses.map(({ q, chosen }) => {
+            const right = q.options.find((o) => o.id === q.correctId)
+            const yours = q.options.find((o) => o.id === chosen)
+            return (
+              <li key={q.id}>
+                <strong>{q.prompt}</strong>
+                {q.promptGlyph && (
+                  <span className="chip-glyph" lang="pa">
+                    {q.promptGlyph}
+                  </span>
+                )}
+                {q.promptEmoji && <span className="pic-emoji">{q.promptEmoji}</span>}
+                <div>
+                  Correct: <span lang="pa">{right?.label}</span>
+                </div>
+                <div className="hint">You picked: {yours?.label ?? '—'}</div>
+              </li>
+            )
+          })}
+        </ul>
+        <button type="button" className="btn btn-primary" onClick={() => { setReviewingMisses(false); setFinished(true) }}>
+          See final score
+        </button>
+      </div>
+    )
+  }
+
   if (finished && result) {
-    const percent = Math.round((result.score / result.total) * 100)
-    const passed = percent >= PASS_PERCENT
+    const passed = result.percent >= PASS_PERCENT
     const nextUnit = curriculum[unitIndex + 1]
     return (
       <div className="quiz result">
         <h1>{passed ? 'Solid — unit cleared' : 'Not yet — drill the weak ones'}</h1>
         <p className="big-score">
-          {result.score}/{result.total} · {percent}%
+          {result.score}/{result.total} · {result.percent}%
         </p>
+        {result.newBest && <p className="badge ok">New personal best!</p>}
+        {result.prevBest != null && !result.newBest && (
+          <p className="hint">Personal best stays {result.prevBest}% — beat it next time.</p>
+        )}
         <p>
           {passed
             ? nextUnit
@@ -116,11 +182,19 @@ export function UnitQuiz() {
             : `Need ${PASS_PERCENT}% to unlock the next unit. Review misses, then retry.`}
         </p>
         {result.weak.length > 0 && (
-          <p className="hint">Review: {result.weak.join(', ')}</p>
+          <p className="hint">
+            Review:{' '}
+            {result.weak
+              .map((id) => letterById[id]?.glyph || matraById[id]?.example || wordById[id]?.gurmukhi || id)
+              .join(' · ')}
+          </p>
         )}
         <div className="path-actions">
           <Link className="btn btn-ghost" to="/">
             Back to path
+          </Link>
+          <Link className="btn btn-ghost" to="/drill">
+            Minimal pairs
           </Link>
           <button type="button" className="btn btn-primary" onClick={start}>
             Retry quiz
@@ -145,6 +219,7 @@ export function UnitQuiz() {
         Question {session.index + 1} / {session.questions.length}
       </div>
       <h1>{q.prompt}</h1>
+      {q.promptEmoji && <div className="pic-emoji big">{q.promptEmoji}</div>}
       {q.promptGlyph && (
         <div className="glyph-display quiz-glyph" lang="pa">
           {q.promptGlyph}

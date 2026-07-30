@@ -3,6 +3,7 @@ import { curriculum, lessonKey, unitLessonKeys } from '../data/curriculum'
 import { letterById } from '../data/letters'
 import { matraById } from '../data/matras'
 import { wordById } from '../data/words'
+import { getDueItems } from '../lib/progress'
 import { useProgress } from '../lib/ProgressContext'
 
 function resolveItem(itemId: string) {
@@ -26,7 +27,7 @@ function resolveItem(itemId: string) {
   if (word) {
     return {
       glyph: word.gurmukhi,
-      label: `${word.romanization} — ${word.meaning}`,
+      label: `${word.emoji ?? ''} ${word.romanization} — ${word.meaning}`.trim(),
       kind: 'word' as const,
     }
   }
@@ -34,7 +35,8 @@ function resolveItem(itemId: string) {
 }
 
 export function Review() {
-  const { progress } = useProgress()
+  const { progress, reviewItem } = useProgress()
+  const due = getDueItems(progress, 20)
 
   const completed = curriculum.flatMap((unit) => {
     const keys = unitLessonKeys(unit)
@@ -53,56 +55,56 @@ export function Review() {
       })
   })
 
-  const weak = progress.weakItems
-    .map((itemId) => {
-      const resolved = resolveItem(itemId)
-      // Prefer the unit that owns this item for a deep link
-      const unit = curriculum.find((u) => {
-        if (u.kind === 'letters') return u.letterIds?.includes(itemId)
-        if (u.kind === 'matras') return u.matraIds?.includes(itemId)
-        return u.wordIds?.includes(itemId)
-      })
-      if (!unit) return null
-      return {
-        key: `weak:${itemId}`,
-        unit,
-        itemId,
-        path: `/unit/${unit.id}/learn/${itemId}`,
-        ...resolved,
-      }
-    })
-    .filter(Boolean)
-
   return (
     <div className="review">
       <Link to="/">← Path</Link>
       <h1>Review</h1>
-      <p>Jump back to completed lessons, or drill items the quiz marked weak.</p>
+      <p>Due cards first (spaced repetition), then everything you’ve completed.</p>
 
-      {weak.length > 0 && (
-        <section className="review-section">
-          <h2>Needs work</h2>
-          <p className="hint">From recent quiz misses — study these before you retry.</p>
-          <ul className="review-list">
-            {weak.map((item) =>
-              item ? (
-                <li key={item.key}>
-                  <Link to={item.path}>
+      <section className="review-section">
+        <h2>Due today ({due.length})</h2>
+        {due.length === 0 ? (
+          <p className="hint">Nothing due — do a lesson or quiz, then come back tomorrow.</p>
+        ) : (
+          <ul className="review-list due-actions">
+            {due.map((card) => {
+              const info = resolveItem(card.itemId)
+              const unit = curriculum.find(
+                (u) =>
+                  u.letterIds?.includes(card.itemId) ||
+                  u.matraIds?.includes(card.itemId) ||
+                  u.wordIds?.includes(card.itemId),
+              )
+              const path = unit ? `/unit/${unit.id}/learn/${card.itemId}` : '/'
+              return (
+                <li key={card.itemId}>
+                  <Link to={path}>
                     <span className="chip-glyph" lang="pa">
-                      {item.glyph}
+                      {info.glyph}
                     </span>
                     <span>
-                      <strong>{item.unit.title}</strong>
+                      <strong>{unit?.title ?? 'Item'}</strong>
                       <br />
-                      {item.label}
+                      {info.label}
                     </span>
                   </Link>
+                  <div className="path-actions">
+                    <button type="button" className="btn btn-ghost" onClick={() => reviewItem(card.itemId, false)}>
+                      Again
+                    </button>
+                    <button type="button" className="btn btn-primary" onClick={() => reviewItem(card.itemId, true)}>
+                      Got it
+                    </button>
+                  </div>
                 </li>
-              ) : null,
-            )}
+              )
+            })}
           </ul>
-        </section>
-      )}
+        )}
+        <Link className="btn btn-accent" to="/drill">
+          Run minimal-pair drill
+        </Link>
+      </section>
 
       <section className="review-section">
         <h2>Completed</h2>

@@ -16,11 +16,16 @@ export function Layout() {
             <small>Punjabi path</small>
           </span>
         </Link>
-        <div className="top-progress" aria-label={`Overall progress ${pct}%`}>
-          <div className="top-progress-track">
-            <div className="top-progress-fill" style={{ width: `${pct}%` }} />
+        <div className="top-meta">
+          <span className="streak-pill" title="Daily streak">
+            Streak {progress.streak.current}
+          </span>
+          <div className="top-progress" aria-label={`Overall progress ${pct}%`}>
+            <div className="top-progress-track">
+              <div className="top-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <span>{pct}%</span>
           </div>
-          <span>{pct}%</span>
         </div>
       </header>
       <main className="main">

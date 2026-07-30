@@ -1,18 +1,54 @@
 import { useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { OnboardingModal } from '../components/OnboardingModal'
 import { curriculum, unitLessonKeys } from '../data/curriculum'
+import { letterById } from '../data/letters'
+import { matraById } from '../data/matras'
+import { wordById } from '../data/words'
 import {
+  getDueItems,
   hasPassedQuiz,
   isUnitLessonsDone,
   isUnitUnlocked,
   overallPercent,
+  syncedDailyGoal,
+  unitStrengthSummary,
 } from '../lib/progress'
+import type { StrengthLevel } from '../types'
 import { useProgress } from '../lib/ProgressContext'
+
+const STRENGTH_LABEL: Record<StrengthLevel, string> = {
+  cold: 'Cold',
+  fading: 'Fading',
+  fresh: 'Fresh',
+  strong: 'Strong',
+}
+
+function resolveLabel(itemId: string) {
+  const l = letterById[itemId]
+  if (l) return { glyph: l.glyph, label: `${l.name} (${l.romanization})`, pathHint: l.id }
+  const m = matraById[itemId]
+  if (m) return { glyph: m.example, label: `${m.name} (${m.romanization})`, pathHint: m.id }
+  const w = wordById[itemId]
+  if (w) return { glyph: w.gurmukhi, label: `${w.emoji ?? ''} ${w.romanization}`.trim(), pathHint: w.id }
+  return { glyph: '?', label: itemId, pathHint: itemId }
+}
+
+function findLearnPath(itemId: string): string | null {
+  for (const unit of curriculum) {
+    if (unit.letterIds?.includes(itemId)) return `/unit/${unit.id}/learn/${itemId}`
+    if (unit.matraIds?.includes(itemId)) return `/unit/${unit.id}/learn/${itemId}`
+    if (unit.wordIds?.includes(itemId)) return `/unit/${unit.id}/learn/${itemId}`
+  }
+  return null
+}
 
 export function Home() {
   const { progress, exportJson, importJson, resetAll } = useProgress()
   const fileRef = useRef<HTMLInputElement>(null)
   const pct = overallPercent(progress)
+  const goal = syncedDailyGoal(progress)
+  const due = useMemo(() => getDueItems(progress, 8), [progress])
 
   const units = useMemo(
     () =>
@@ -22,7 +58,10 @@ export function Home() {
         const quizPassed = hasPassedQuiz(progress, unit.id)
         const keys = unitLessonKeys(unit)
         const doneCount = keys.filter((k) => progress.completedLessons.includes(k)).length
-        return { unit, index, unlocked, lessonsDone, quizPassed, doneCount, total: keys.length }
+        const itemIds =
+          unit.letterIds ?? unit.matraIds ?? unit.wordIds ?? []
+        const strength = unitStrengthSummary(progress, itemIds)
+        return { unit, index, unlocked, lessonsDone, quizPassed, doneCount, total: keys.length, strength }
       }),
     [progress],
   )
@@ -42,8 +81,12 @@ export function Home() {
     importJson(text)
   }
 
+  const goalPct = Math.min(100, Math.round((goal.completed / Math.max(1, goal.target)) * 100))
+
   return (
     <div className="home">
+      <OnboardingModal />
+
       <section className="hero-path">
         <p className="eyebrow">Your curriculum</p>
         <h1>Learn, then quiz. Unlock as you go.</h1>
@@ -51,6 +94,26 @@ export function Home() {
           See each Gurmukhi letter, hear it, write it. Pass the unit quiz to open the next step —
           then join letters into words.
         </p>
+        <div className="habit-row">
+          <div className="habit-chip">
+            <span className="habit-num">{progress.streak.current}</span>
+            <span>day streak</span>
+            <small>best {progress.streak.best}</small>
+          </div>
+          <div className="habit-chip">
+            <span className="habit-num">
+              {goal.completed}/{goal.target}
+            </span>
+            <span>today’s goal</span>
+            <div className="mini-track">
+              <div className="mini-fill" style={{ width: `${goalPct}%` }} />
+            </div>
+          </div>
+          <div className="habit-chip">
+            <span className="habit-num">{pct}%</span>
+            <span>path done</span>
+          </div>
+        </div>
         <div className="overall-bar">
           <div className="overall-track">
             <div className="overall-fill" style={{ width: `${pct}%` }} />
@@ -59,22 +122,70 @@ export function Home() {
         </div>
       </section>
 
+      {due.length > 0 && (
+        <section className="due-card">
+          <div className="due-head">
+            <h2>Due today</h2>
+            <Link to="/review">Open review →</Link>
+          </div>
+          <p className="hint">Spaced items that need a quick hit before they fade.</p>
+          <ul className="due-list">
+            {due.map((card) => {
+              const info = resolveLabel(card.itemId)
+              const path = findLearnPath(card.itemId)
+              return (
+                <li key={card.itemId}>
+                  {path ? (
+                    <Link to={path}>
+                      <span className="chip-glyph" lang="pa">
+                        {info.glyph}
+                      </span>
+                      <span>{info.label}</span>
+                    </Link>
+                  ) : (
+                    <span>
+                      <span className="chip-glyph" lang="pa">
+                        {info.glyph}
+                      </span>
+                      {info.label}
+                    </span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      <div className="quick-links">
+        <Link className="btn btn-accent" to="/drill">
+          Minimal-pair drill
+        </Link>
+        <Link className="btn btn-ghost" to="/review">
+          Review desk
+        </Link>
+      </div>
+
       <ol className="path-list">
-        {units.map(({ unit, index, unlocked, lessonsDone, quizPassed, doneCount, total }) => {
+        {units.map(({ unit, index, unlocked, lessonsDone, quizPassed, doneCount, total, strength }) => {
           const status = !unlocked ? 'locked' : quizPassed ? 'done' : lessonsDone ? 'ready' : 'open'
+          const firstId = unit.letterIds?.[0] ?? unit.matraIds?.[0] ?? unit.wordIds?.[0] ?? ''
           return (
             <li key={unit.id} className={`path-item status-${status}`}>
               <div className="path-index">{index + 1}</div>
               <div className="path-body">
                 <div className="path-head">
                   <h2>{unit.title}</h2>
-                  <span className="path-kind">{unit.kind}</span>
+                  <span className={`strength-dot ${strength}`} title={STRENGTH_LABEL[strength]}>
+                    {STRENGTH_LABEL[strength]}
+                  </span>
                 </div>
                 <p>{unit.subtitle}</p>
                 <div className="path-meta">
                   <span>
                     Lessons {doneCount}/{total}
                   </span>
+                  <span className="path-kind">{unit.kind}</span>
                   {quizPassed && <span className="badge ok">Quiz passed</span>}
                   {!quizPassed && lessonsDone && unlocked && (
                     <span className="badge ready">Quiz ready</span>
@@ -87,10 +198,8 @@ export function Home() {
                       <Link
                         className="btn btn-primary"
                         to={
-                          lessonsDone
-                            ? `/unit/${unit.id}/learn/${
-                                unit.letterIds?.[0] ?? unit.matraIds?.[0] ?? unit.wordIds?.[0] ?? ''
-                              }`
+                          lessonsDone && firstId
+                            ? `/unit/${unit.id}/learn/${firstId}`
                             : `/unit/${unit.id}/learn`
                         }
                       >
@@ -152,9 +261,6 @@ export function Home() {
             }}
           />
         </div>
-        <Link className="review-link" to="/review">
-          Review completed items →
-        </Link>
       </section>
     </div>
   )

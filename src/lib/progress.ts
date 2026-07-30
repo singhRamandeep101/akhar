@@ -1,7 +1,24 @@
-import type { ProgressState, QuizScore } from '../types'
+import type { DailyGoalState, MemoryCard, ProgressState, QuizScore, StreakState, StrengthLevel } from '../types'
 import { curriculum, PASS_PERCENT, unitLessonKeys } from '../data/curriculum'
 
 const STORAGE_KEY = 'punjabi-learn-progress-v1'
+
+const INTERVAL_DAYS = [0, 1, 3, 7, 14, 30]
+
+export function todayKey(d = new Date()): string {
+  return d.toISOString().slice(0, 10)
+}
+
+function addDays(dateKey: string, days: number): string {
+  const d = new Date(`${dateKey}T12:00:00`)
+  d.setDate(d.getDate() + days)
+  return todayKey(d)
+}
+
+function daysBetween(a: string, b: string): number {
+  const ms = new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()
+  return Math.round(ms / 86400000)
+}
 
 export function defaultProgress(): ProgressState {
   return {
@@ -12,6 +29,27 @@ export function defaultProgress(): ProgressState {
     quizScores: [],
     weakItems: [],
     lastVisited: null,
+    streak: { current: 0, best: 0, lastActiveDate: null },
+    memory: {},
+    dailyGoal: { date: todayKey(), target: 5, completed: 0 },
+    onboardingDone: false,
+  }
+}
+
+function normalize(raw: Partial<ProgressState>): ProgressState {
+  const base = defaultProgress()
+  return {
+    ...base,
+    ...raw,
+    version: 1,
+    completedLessons: Array.isArray(raw.completedLessons) ? raw.completedLessons : [],
+    drawingPassed: Array.isArray(raw.drawingPassed) ? raw.drawingPassed : [],
+    quizScores: Array.isArray(raw.quizScores) ? raw.quizScores : [],
+    weakItems: Array.isArray(raw.weakItems) ? raw.weakItems : [],
+    streak: { ...base.streak, ...(raw.streak ?? {}) },
+    memory: raw.memory && typeof raw.memory === 'object' ? raw.memory : {},
+    dailyGoal: { ...base.dailyGoal, ...(raw.dailyGoal ?? {}) },
+    onboardingDone: Boolean(raw.onboardingDone),
   }
 }
 
@@ -19,13 +57,7 @@ export function loadProgress(): ProgressState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultProgress()
-    const parsed = JSON.parse(raw) as ProgressState
-    if (parsed.version !== 1) return defaultProgress()
-    return {
-      ...defaultProgress(),
-      ...parsed,
-      drawingPassed: Array.isArray(parsed.drawingPassed) ? parsed.drawingPassed : [],
-    }
+    return normalize(JSON.parse(raw) as Partial<ProgressState>)
   } catch {
     return defaultProgress()
   }
@@ -40,27 +72,57 @@ export function exportProgress(state: ProgressState): string {
 }
 
 export function importProgress(json: string): ProgressState {
-  const parsed = JSON.parse(json) as ProgressState
-  if (parsed.version !== 1 || !Array.isArray(parsed.completedLessons)) {
-    throw new Error('Invalid progress file')
-  }
-  const next = {
-    ...defaultProgress(),
-    ...parsed,
-    drawingPassed: Array.isArray(parsed.drawingPassed) ? parsed.drawingPassed : [],
-  }
+  const parsed = JSON.parse(json) as Partial<ProgressState>
+  if (!Array.isArray(parsed.completedLessons)) throw new Error('Invalid progress file')
+  const next = normalize(parsed)
   saveProgress(next)
   return next
 }
 
-export function markLessonComplete(state: ProgressState, lessonId: string): ProgressState {
-  if (state.completedLessons.includes(lessonId)) {
-    return { ...state, lastVisited: lessonId }
+function bumpStreak(streak: StreakState, date = todayKey()): StreakState {
+  if (streak.lastActiveDate === date) return streak
+  const yesterday = addDays(date, -1)
+  const current = streak.lastActiveDate === yesterday ? streak.current + 1 : 1
+  return {
+    current,
+    best: Math.max(streak.best, current),
+    lastActiveDate: date,
   }
-  const next = {
+}
+
+function bumpDailyGoal(goal: DailyGoalState, amount = 1, date = todayKey()): DailyGoalState {
+  if (goal.date !== date) return { date, target: goal.target || 5, completed: amount }
+  return { ...goal, completed: goal.completed + amount }
+}
+
+function scheduleMemory(
+  memory: Record<string, MemoryCard>,
+  itemId: string,
+  good: boolean,
+  date = todayKey(),
+): Record<string, MemoryCard> {
+  const prev = memory[itemId]
+  const box = good ? Math.min(5, (prev?.box ?? 0) + 1) : 0
+  const card: MemoryCard = {
+    itemId,
+    box,
+    dueAt: addDays(date, INTERVAL_DAYS[box] ?? 1),
+    lastResult: good ? 'good' : 'again',
+    seenAt: date,
+  }
+  return { ...memory, [itemId]: card }
+}
+
+export function markLessonComplete(state: ProgressState, lessonId: string): ProgressState {
+  const itemId = lessonId.includes(':') ? lessonId.split(':')[1]! : lessonId
+  const already = state.completedLessons.includes(lessonId)
+  const next: ProgressState = {
     ...state,
-    completedLessons: [...state.completedLessons, lessonId],
+    completedLessons: already ? state.completedLessons : [...state.completedLessons, lessonId],
     lastVisited: lessonId,
+    streak: bumpStreak(state.streak),
+    dailyGoal: bumpDailyGoal(state.dailyGoal),
+    memory: scheduleMemory(state.memory, itemId, true),
   }
   saveProgress(next)
   return next
@@ -71,6 +133,7 @@ export function markDrawingPassed(state: ProgressState, lessonId: string): Progr
   const next = {
     ...state,
     drawingPassed: [...state.drawingPassed, lessonId],
+    streak: bumpStreak(state.streak),
   }
   saveProgress(next)
   return next
@@ -86,6 +149,7 @@ export function recordQuiz(
   score: number,
   total: number,
   weakItems: string[],
+  correctItems: string[] = [],
 ): ProgressState {
   const percent = total === 0 ? 0 : Math.round((score / total) * 100)
   const passed = percent >= PASS_PERCENT
@@ -102,9 +166,13 @@ export function recordQuiz(
   const quizScores = [...state.quizScores.filter((q) => q.unitId !== unitId), entry]
   let unlockedUnitIndex = state.unlockedUnitIndex
   if (passed && unitIndex >= 0 && unlockedUnitIndex <= unitIndex) {
-    unlockedUnitIndex =
-      unitIndex >= curriculum.length - 1 ? curriculum.length : unitIndex + 1
+    unlockedUnitIndex = unitIndex >= curriculum.length - 1 ? curriculum.length : unitIndex + 1
   }
+
+  let memory = { ...state.memory }
+  for (const id of correctItems) memory = scheduleMemory(memory, id, true)
+  for (const id of weakItems) memory = scheduleMemory(memory, id, false)
+
   const next: ProgressState = {
     ...state,
     quizScores,
@@ -112,7 +180,35 @@ export function recordQuiz(
     weakItems: passed
       ? state.weakItems.filter((w) => !weakItems.includes(w))
       : Array.from(new Set([...state.weakItems, ...weakItems])),
+    streak: bumpStreak(state.streak),
+    dailyGoal: bumpDailyGoal(state.dailyGoal, Math.max(1, Math.round(total / 4))),
+    memory,
   }
+  saveProgress(next)
+  return next
+}
+
+export function recordReviewResult(state: ProgressState, itemId: string, good: boolean): ProgressState {
+  const next: ProgressState = {
+    ...state,
+    streak: bumpStreak(state.streak),
+    dailyGoal: bumpDailyGoal(state.dailyGoal),
+    memory: scheduleMemory(state.memory, itemId, good),
+    weakItems: good ? state.weakItems.filter((w) => w !== itemId) : Array.from(new Set([...state.weakItems, itemId])),
+  }
+  saveProgress(next)
+  return next
+}
+
+export function completeOnboarding(state: ProgressState): ProgressState {
+  const next = { ...state, onboardingDone: true }
+  saveProgress(next)
+  return next
+}
+
+export function touchActivity(state: ProgressState): ProgressState {
+  const next = { ...state, streak: bumpStreak(state.streak) }
+  if (next.streak === state.streak) return state
   saveProgress(next)
   return next
 }
@@ -124,12 +220,16 @@ export function isUnitUnlocked(state: ProgressState, unitIndex: number): boolean
 export function isUnitLessonsDone(state: ProgressState, unitIndex: number): boolean {
   const unit = curriculum[unitIndex]
   if (!unit) return false
-  const keys = unitLessonKeys(unit)
-  return keys.every((k) => state.completedLessons.includes(k))
+  return unitLessonKeys(unit).every((k) => state.completedLessons.includes(k))
 }
 
 export function hasPassedQuiz(state: ProgressState, unitId: string): boolean {
   return state.quizScores.some((q) => q.unitId === unitId && q.passed)
+}
+
+export function quizBest(state: ProgressState, unitId: string): number | null {
+  const q = state.quizScores.find((x) => x.unitId === unitId)
+  return q ? q.percent : null
 }
 
 export function overallPercent(state: ProgressState): number {
@@ -146,4 +246,50 @@ export function setLastVisited(state: ProgressState, path: string): ProgressStat
   const next = { ...state, lastVisited: path }
   saveProgress(next)
   return next
+}
+
+export function getDueItems(state: ProgressState, limit = 12): MemoryCard[] {
+  const today = todayKey()
+  const due = Object.values(state.memory).filter((c) => c.dueAt <= today)
+  // Also surface weak items that aren't scheduled yet
+  for (const id of state.weakItems) {
+    if (!due.some((c) => c.itemId === id)) {
+      due.push({
+        itemId: id,
+        box: 0,
+        dueAt: today,
+        lastResult: 'again',
+        seenAt: today,
+      })
+    }
+  }
+  return due.sort((a, b) => a.box - b.box || a.dueAt.localeCompare(b.dueAt)).slice(0, limit)
+}
+
+export function strengthFor(state: ProgressState, itemId: string): StrengthLevel {
+  const card = state.memory[itemId]
+  if (!card) return 'cold'
+  const lag = daysBetween(card.seenAt, todayKey())
+  if (card.box >= 4 && lag <= 7) return 'strong'
+  if (card.box >= 2 && lag <= INTERVAL_DAYS[card.box]) return 'fresh'
+  if (card.dueAt <= todayKey() || lag > (INTERVAL_DAYS[card.box] ?? 3)) return 'fading'
+  return 'fresh'
+}
+
+export function unitStrengthSummary(state: ProgressState, itemIds: string[]): StrengthLevel {
+  if (!itemIds.length) return 'cold'
+  const ranks: Record<StrengthLevel, number> = { cold: 0, fading: 1, fresh: 2, strong: 3 }
+  let sum = 0
+  for (const id of itemIds) sum += ranks[strengthFor(state, id)]
+  const avg = sum / itemIds.length
+  if (avg < 0.75) return 'cold'
+  if (avg < 1.5) return 'fading'
+  if (avg < 2.5) return 'fresh'
+  return 'strong'
+}
+
+export function syncedDailyGoal(state: ProgressState): DailyGoalState {
+  const today = todayKey()
+  if (state.dailyGoal.date === today) return state.dailyGoal
+  return { date: today, target: state.dailyGoal.target || 5, completed: 0 }
 }
