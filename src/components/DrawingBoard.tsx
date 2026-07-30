@@ -20,7 +20,7 @@ type Props = {
 type Stroke = Point[]
 
 /** User pen — intentionally chunky for finger/mouse tracing. */
-const USER_INK_WIDTH = 17
+const USER_INK_WIDTH = 25
 
 export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function DrawingBoard(
   { ghostGlyph, className = '', onScore, autoDemo = true, showGuide = true },
