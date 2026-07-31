@@ -1,5 +1,5 @@
 /* Akhar offline cache — precaches shell; runtime-caches audio/fonts */
-const CACHE = 'akhar-v2'
+const CACHE = 'akhar-v3'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -44,12 +44,14 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // App shell: network-first, fall back to cache
+  // App shell: network-first, fall back to cache (only store successful responses)
   event.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone()
-        caches.open(CACHE).then((cache) => cache.put(req, copy))
+        if (res.ok && res.type === 'basic') {
+          const copy = res.clone()
+          caches.open(CACHE).then((cache) => cache.put(req, copy))
+        }
         return res
       })
       .catch(() => caches.match(req).then((r) => r || caches.match('./index.html'))),
