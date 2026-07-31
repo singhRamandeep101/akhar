@@ -22,5 +22,3 @@ export const minimalPairs: MinimalPair[] = [
   { id: 'sa-ha', a: 'sassa', b: 'haha', tip: 'ਸ hiss vs ਹ breath' },
   { id: 'ura-aira', a: 'ura', b: 'aira', tip: 'ੳ oo-carrier vs ਅ a-carrier' },
 ]
-
-export const pairsById = Object.fromEntries(minimalPairs.map((p) => [p.id, p]))

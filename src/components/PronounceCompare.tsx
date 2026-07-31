@@ -13,10 +13,24 @@ export function PronounceCompare({ nativeSrc, label = 'Your turn' }: Props) {
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const blobUrlRef = useRef<string | null>(null)
+  const stopTimerRef = useRef<number | null>(null)
+  const youAudioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     return () => {
+      if (stopTimerRef.current != null) window.clearTimeout(stopTimerRef.current)
+      if (recorderRef.current?.state === 'recording') {
+        try {
+          recorderRef.current.stop()
+        } catch {
+          /* ignore */
+        }
+      }
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+      if (youAudioRef.current) {
+        youAudioRef.current.pause()
+        youAudioRef.current = null
+      }
       stopAudio()
     }
   }, [])
@@ -44,7 +58,8 @@ export function PronounceCompare({ nativeSrc, label = 'Your turn' }: Props) {
       recorderRef.current = recorder
       recorder.start()
       setPhase('recording')
-      window.setTimeout(() => {
+      if (stopTimerRef.current != null) window.clearTimeout(stopTimerRef.current)
+      stopTimerRef.current = window.setTimeout(() => {
         if (recorder.state === 'recording') recorder.stop()
       }, 2500)
     } catch {
@@ -54,14 +69,29 @@ export function PronounceCompare({ nativeSrc, label = 'Your turn' }: Props) {
   }
 
   const stop = () => {
+    if (stopTimerRef.current != null) {
+      window.clearTimeout(stopTimerRef.current)
+      stopTimerRef.current = null
+    }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
   }
 
-  const playNative = () => void playAudio(nativeSrc)
+  const playNative = () => {
+    if (youAudioRef.current) {
+      youAudioRef.current.pause()
+      youAudioRef.current = null
+    }
+    void playAudio(nativeSrc)
+  }
   const playYou = () => {
     if (!blobUrlRef.current) return
     stopAudio()
-    void new Audio(blobUrlRef.current).play()
+    if (youAudioRef.current) {
+      youAudioRef.current.pause()
+    }
+    const a = new Audio(blobUrlRef.current)
+    youAudioRef.current = a
+    void a.play()
   }
 
   if (phase === 'unsupported') {

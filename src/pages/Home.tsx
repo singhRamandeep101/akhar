@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OnboardingModal } from '../components/OnboardingModal'
 import { curriculum, unitLessonKeys } from '../data/curriculum'
@@ -12,6 +12,7 @@ import {
   isUnitUnlocked,
   overallPercent,
   syncedDailyGoal,
+  syncedStreak,
   unitStrengthSummary,
 } from '../lib/progress'
 import type { StrengthLevel } from '../types'
@@ -48,8 +49,9 @@ export function Home() {
   const fileRef = useRef<HTMLInputElement>(null)
   const pct = overallPercent(progress)
   const goal = syncedDailyGoal(progress)
+  const streak = syncedStreak(progress)
   const due = useMemo(() => getDueItems(progress, 8), [progress])
-
+  const [importError, setImportError] = useState<string | null>(null)
   const units = useMemo(
     () =>
       curriculum.map((unit, index) => {
@@ -77,8 +79,13 @@ export function Home() {
   }
 
   const onImportFile = async (file: File) => {
-    const text = await file.text()
-    importJson(text)
+    setImportError(null)
+    try {
+      const text = await file.text()
+      importJson(text)
+    } catch {
+      setImportError('Couldn’t import that file — use an Akhar progress JSON export.')
+    }
   }
 
   const goalPct = Math.min(100, Math.round((goal.completed / Math.max(1, goal.target)) * 100))
@@ -96,9 +103,9 @@ export function Home() {
         </p>
         <div className="habit-row">
           <div className="habit-chip">
-            <span className="habit-num">{progress.streak.current}</span>
+            <span className="habit-num">{streak.current}</span>
             <span>day streak</span>
-            <small>best {progress.streak.best}</small>
+            <small>best {streak.best}</small>
           </div>
           <div className="habit-chip">
             <span className="habit-num">
@@ -261,6 +268,7 @@ export function Home() {
             }}
           />
         </div>
+        {importError && <p className="warn">{importError}</p>}
       </section>
     </div>
   )

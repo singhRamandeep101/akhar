@@ -163,29 +163,50 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     demoRaf.current = requestAnimationFrame(tick)
   }
 
-  const setup = async () => {
+  const setup = async (opts?: { clearInk?: boolean; autoPlay?: boolean }) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const parent = canvas.parentElement
     if (!parent) return
-    const gen = ++setupGen.current
-    stopDemo()
+    const clearInk = opts?.clearInk ?? true
+    const autoPlay = opts?.autoPlay ?? autoDemo
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5)
     const w = Math.max(280, parent.clientWidth)
     const mobile = window.matchMedia('(max-width: 720px)').matches
-    const vh = window.visualViewport?.height ?? window.innerHeight
-    // Phones: tall near-square slate so fingers have room; desktop stays shorter
+    // Prefer layout width over visualViewport height so URL-bar jitter doesn't rebuild the board
     const h = mobile
-      ? Math.round(Math.max(300, Math.min(vh * 0.5, w * 1.15, 520)))
+      ? Math.round(Math.max(300, Math.min(w * 1.05, 480)))
       : Math.max(260, Math.min(420, w * 0.85))
+
+    const prev = sizeRef.current
+    // Ignore tiny size changes (mobile chrome show/hide)
+    if (
+      !clearInk &&
+      prev.w > 0 &&
+      Math.abs(prev.w - w) < 8 &&
+      Math.abs(prev.h - h) < 8 &&
+      templateRef.current
+    ) {
+      return
+    }
+
+    // Significant size change invalidates stroke coordinates — drop ink
+    const sizeChanged = prev.w > 0 && (Math.abs(prev.w - w) >= 8 || Math.abs(prev.h - h) >= 8)
+    const shouldClear = clearInk || sizeChanged
+
+    const gen = ++setupGen.current
+    stopDemo()
     canvas.width = w * dpr
     canvas.height = h * dpr
     canvas.style.width = `${w}px`
     canvas.style.height = `${h}px`
     sizeRef.current = { w, h, dpr }
-    strokesRef.current = []
-    currentRef.current = []
-    setLastScore(null)
+    if (shouldClear) {
+      strokesRef.current = []
+      currentRef.current = []
+      setLastScore(null)
+    }
     setLoadError(null)
     setReady(false)
     try {
@@ -194,7 +215,7 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
       templateRef.current = template
       setReady(true)
       redraw()
-      if (autoDemo) runDemo()
+      if (autoPlay && shouldClear && clearInk) runDemo()
     } catch (err) {
       if (gen !== setupGen.current) return
       setLoadError(err instanceof Error ? err.message : 'Could not load letter template')
@@ -212,16 +233,20 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
   }
 
   useEffect(() => {
-    void setup()
+    void setup({ clearInk: true, autoPlay: autoDemo })
+    let resizeTimer: number | null = null
     const onResize = () => {
-      void setup()
+      if (resizeTimer != null) window.clearTimeout(resizeTimer)
+      resizeTimer = window.setTimeout(() => {
+        // Keep ink; don't restart demo on soft resizes
+        void setup({ clearInk: false, autoPlay: false })
+      }, 200)
     }
     window.addEventListener('resize', onResize)
-    window.visualViewport?.addEventListener('resize', onResize)
     return () => {
       setupGen.current += 1
+      if (resizeTimer != null) window.clearTimeout(resizeTimer)
       window.removeEventListener('resize', onResize)
-      window.visualViewport?.removeEventListener('resize', onResize)
       stopDemo()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

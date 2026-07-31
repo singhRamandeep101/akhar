@@ -66,15 +66,3 @@ export function stopAudio() {
     }
   }
 }
-
-export function playLetterAudio(audio: string) {
-  return playAudio(audio)
-}
-
-export function playWordAudio(audio: string) {
-  return playAudio(audio)
-}
-
-export function playMatraAudio(audio: string) {
-  return playAudio(audio)
-}

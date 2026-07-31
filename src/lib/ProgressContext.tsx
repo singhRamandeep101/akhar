@@ -10,6 +10,7 @@ import type { ProgressState } from '../types'
 import {
   completeOnboarding,
   defaultProgress,
+  exportProgress,
   importProgress,
   loadProgress,
   markDrawingPassed,
@@ -77,7 +78,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     setProgress(next)
   }, [])
 
-  const exportJson = useCallback(() => JSON.stringify(progress, null, 2), [progress])
+  const exportJson = useCallback(() => exportProgress(progress), [progress])
 
   const importJson = useCallback((json: string) => {
     setProgress(importProgress(json))

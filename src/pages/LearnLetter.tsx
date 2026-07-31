@@ -37,15 +37,15 @@ export function LearnLetter() {
 
   const prev = adjacentItem(unit, itemId, -1)
   const next = adjacentItem(unit, itemId, 1)
-  const canAdvance = hasDrawingPassed(progress, key)
   const done = progress.completedLessons.includes(key)
+  const canAdvance = hasDrawingPassed(progress, key) || done
 
   const onScore = (result: ScoreResult) => {
     if (result.passed) passDrawing(key)
   }
 
   const markAndGo = (to: string) => {
-    if (!hasDrawingPassed(progress, key)) return
+    if (!hasDrawingPassed(progress, key) && !done) return
     completeLesson(key)
     navigate(to)
   }
@@ -74,7 +74,6 @@ export function LearnLetter() {
         </p>
         <p className="hint">{letter.soundHint}</p>
         <PlaySoundButton src={letter.audio} />
-        <PronounceCompare nativeSrc={letter.audio} label="Say it like the recording" />
       </div>
 
       <div className="glyph-strip glyph-strip-mobile">
@@ -109,15 +108,16 @@ export function LearnLetter() {
         />
       </section>
 
+      <PronounceCompare nativeSrc={letter.audio} label="Say it like the recording" />
+
       <details className="mobile-extras">
-        <summary>Sound tip & pronounce</summary>
+        <summary>Sound tip</summary>
         <p className="hint">{letter.soundHint}</p>
         {letter.examplePa && letter.exampleEn && (
           <p className="roman">
             e.g. {letter.examplePa} ({letter.exampleEn})
           </p>
         )}
-        <PronounceCompare nativeSrc={letter.audio} label="Say it like the recording" />
       </details>
 
       <div className="lesson-footer lesson-footer-sticky">

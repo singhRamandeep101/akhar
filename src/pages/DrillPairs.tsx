@@ -52,7 +52,7 @@ export function DrillPairs() {
   const options = useMemo(() => {
     if (!target || !other) return []
     return shuffle([target, other])
-  }, [target, other, index])
+  }, [target, other])
 
   useAutoPlayAudio(round?.prompt === 'hear' ? target?.audio : undefined)
 
@@ -117,7 +117,6 @@ export function DrillPairs() {
       {round.prompt === 'hear' && (
         <PlaySoundButton src={target.audio} label="Replay" className="btn btn-ghost" />
       )}
-      <p className="hint">{round.tip}</p>
       <div className="options">
         {options.map((opt) => {
           let cls = 'option'
@@ -141,6 +140,7 @@ export function DrillPairs() {
           )
         })}
       </div>
+      {picked && <p className="hint">{round.tip}</p>}
       {picked && (
         <button type="button" className="btn btn-primary" onClick={next}>
           {index + 1 >= rounds.length ? 'See results' : 'Next'}

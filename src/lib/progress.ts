@@ -6,7 +6,10 @@ const STORAGE_KEY = 'punjabi-learn-progress-v1'
 const INTERVAL_DAYS = [0, 1, 3, 7, 14, 30]
 
 export function todayKey(d = new Date()): string {
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function addDays(dateKey: string, days: number): string {
@@ -64,7 +67,11 @@ export function loadProgress(): ProgressState {
 }
 
 export function saveProgress(state: ProgressState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    /* quota / private mode — keep in-memory state only */
+  }
 }
 
 export function exportProgress(state: ProgressState): string {
@@ -116,10 +123,17 @@ function scheduleMemory(
 export function markLessonComplete(state: ProgressState, lessonId: string): ProgressState {
   const itemId = lessonId.includes(':') ? lessonId.split(':')[1]! : lessonId
   const already = state.completedLessons.includes(lessonId)
+  if (already) {
+    const next: ProgressState = {
+      ...state,
+      streak: bumpStreak(state.streak),
+    }
+    saveProgress(next)
+    return next
+  }
   const next: ProgressState = {
     ...state,
-    completedLessons: already ? state.completedLessons : [...state.completedLessons, lessonId],
-    lastVisited: lessonId,
+    completedLessons: [...state.completedLessons, lessonId],
     streak: bumpStreak(state.streak),
     dailyGoal: bumpDailyGoal(state.dailyGoal),
     memory: scheduleMemory(state.memory, itemId, true),
@@ -206,13 +220,6 @@ export function completeOnboarding(state: ProgressState): ProgressState {
   return next
 }
 
-export function touchActivity(state: ProgressState): ProgressState {
-  const next = { ...state, streak: bumpStreak(state.streak) }
-  if (next.streak === state.streak) return state
-  saveProgress(next)
-  return next
-}
-
 export function isUnitUnlocked(state: ProgressState, unitIndex: number): boolean {
   return unitIndex <= state.unlockedUnitIndex
 }
@@ -292,4 +299,15 @@ export function syncedDailyGoal(state: ProgressState): DailyGoalState {
   const today = todayKey()
   if (state.dailyGoal.date === today) return state.dailyGoal
   return { date: today, target: state.dailyGoal.target || 5, completed: 0 }
+}
+
+/** Streak as shown in UI — resets to 0 if the user missed a day (without waiting for next activity). */
+export function syncedStreak(state: ProgressState): StreakState {
+  const today = todayKey()
+  const { streak } = state
+  if (!streak.lastActiveDate) return streak
+  if (streak.lastActiveDate === today || streak.lastActiveDate === addDays(today, -1)) {
+    return streak
+  }
+  return { current: 0, best: streak.best, lastActiveDate: streak.lastActiveDate }
 }

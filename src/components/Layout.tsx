@@ -1,10 +1,11 @@
 import { Link, Outlet } from 'react-router-dom'
-import { overallPercent } from '../lib/progress'
+import { overallPercent, syncedStreak } from '../lib/progress'
 import { useProgress } from '../lib/ProgressContext'
 
 export function Layout() {
   const { progress } = useProgress()
   const pct = overallPercent(progress)
+  const streak = syncedStreak(progress)
 
   return (
     <div className="app-shell">
@@ -18,7 +19,7 @@ export function Layout() {
         </Link>
         <div className="top-meta">
           <span className="streak-pill" title="Daily streak">
-            Streak {progress.streak.current}
+            Streak {streak.current}
           </span>
           <div className="top-progress" aria-label={`Overall progress ${pct}%`}>
             <div className="top-progress-track">
