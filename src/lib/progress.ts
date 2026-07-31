@@ -57,8 +57,8 @@ function normalize(raw: Partial<ProgressState>): ProgressState {
   const quizScores = Array.isArray(raw.quizScores)
     ? raw.quizScores.filter((q): q is QuizScore => !!q && typeof q === 'object' && typeof q.unitId === 'string')
     : []
-  const streakRaw = raw.streak && typeof raw.streak === 'object' ? raw.streak : {}
-  const dailyRaw = raw.dailyGoal && typeof raw.dailyGoal === 'object' ? raw.dailyGoal : {}
+  const streakRaw = (raw.streak && typeof raw.streak === 'object' ? raw.streak : {}) as Partial<StreakState>
+  const dailyRaw = (raw.dailyGoal && typeof raw.dailyGoal === 'object' ? raw.dailyGoal : {}) as Partial<DailyGoalState>
   return {
     ...base,
     version: 1,
