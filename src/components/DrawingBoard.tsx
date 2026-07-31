@@ -34,6 +34,7 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
   const sizeRef = useRef({ w: 0, h: 0, dpr: 1 })
   const setupGen = useRef(0)
   const demoRaf = useRef<number | null>(null)
+  const demoEndTimer = useRef<number | null>(null)
   const [ready, setReady] = useState(false)
   const [demoPlaying, setDemoPlaying] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -43,6 +44,10 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     if (demoRaf.current != null) {
       cancelAnimationFrame(demoRaf.current)
       demoRaf.current = null
+    }
+    if (demoEndTimer.current != null) {
+      window.clearTimeout(demoEndTimer.current)
+      demoEndTimer.current = null
     }
     setDemoPlaying(false)
   }
@@ -155,7 +160,9 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
         setDemoPlaying(false)
         demoRaf.current = null
         redraw(template.height)
-        window.setTimeout(() => {
+        if (demoEndTimer.current != null) window.clearTimeout(demoEndTimer.current)
+        demoEndTimer.current = window.setTimeout(() => {
+          demoEndTimer.current = null
           if (templateRef.current === template) redraw()
         }, 400)
       }

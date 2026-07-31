@@ -77,8 +77,10 @@ export function UnitQuiz() {
     questions.forEach((q, i) => {
       if (answers[i] === q.correctId) {
         score += 1
-        if (!correct.includes(q.weakKey)) correct.push(q.weakKey)
+        if (!weak.includes(q.weakKey) && !correct.includes(q.weakKey)) correct.push(q.weakKey)
       } else {
+        const ci = correct.indexOf(q.weakKey)
+        if (ci >= 0) correct.splice(ci, 1)
         if (!weak.includes(q.weakKey)) weak.push(q.weakKey)
         misses.push({ q, chosen: answers[i] })
       }

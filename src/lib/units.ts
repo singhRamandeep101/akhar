@@ -42,8 +42,4 @@ export function adjacentItem(unit: CurriculumUnit, itemId: string, dir: -1 | 1):
   return ids[i + dir] ?? null
 }
 
-export function lessonPath(unitId: string, itemId: string) {
-  return `/unit/${unitId}/learn/${itemId}`
-}
-
 export { lessonKey }

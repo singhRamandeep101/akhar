@@ -11,21 +11,35 @@ export function PronounceCompare({ nativeSrc, label = 'Your turn' }: Props) {
   const [phase, setPhase] = useState<'idle' | 'recording' | 'ready' | 'unsupported'>('idle')
   const [error, setError] = useState<string | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const blobUrlRef = useRef<string | null>(null)
   const stopTimerRef = useRef<number | null>(null)
   const youAudioRef = useRef<HTMLAudioElement | null>(null)
+  const aliveRef = useRef(true)
+
+  const releaseMic = () => {
+    if (stopTimerRef.current != null) {
+      window.clearTimeout(stopTimerRef.current)
+      stopTimerRef.current = null
+    }
+    if (recorderRef.current?.state === 'recording') {
+      try {
+        recorderRef.current.stop()
+      } catch {
+        /* ignore */
+      }
+    }
+    recorderRef.current = null
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+  }
 
   useEffect(() => {
+    aliveRef.current = true
     return () => {
-      if (stopTimerRef.current != null) window.clearTimeout(stopTimerRef.current)
-      if (recorderRef.current?.state === 'recording') {
-        try {
-          recorderRef.current.stop()
-        } catch {
-          /* ignore */
-        }
-      }
+      aliveRef.current = false
+      releaseMic()
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
       if (youAudioRef.current) {
         youAudioRef.current.pause()
@@ -43,6 +57,11 @@ export function PronounceCompare({ nativeSrc, label = 'Your turn' }: Props) {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!aliveRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
+      streamRef.current = stream
       const recorder = new MediaRecorder(stream)
       chunksRef.current = []
       recorder.ondataavailable = (e) => {
@@ -50,6 +69,8 @@ export function PronounceCompare({ nativeSrc, label = 'Your turn' }: Props) {
       }
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop())
+        if (streamRef.current === stream) streamRef.current = null
+        if (!aliveRef.current) return
         if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
         blobUrlRef.current = URL.createObjectURL(blob)
@@ -63,6 +84,7 @@ export function PronounceCompare({ nativeSrc, label = 'Your turn' }: Props) {
         if (recorder.state === 'recording') recorder.stop()
       }, 2500)
     } catch {
+      if (!aliveRef.current) return
       setError('Microphone blocked — allow mic access to compare.')
       setPhase('idle')
     }

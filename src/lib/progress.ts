@@ -41,17 +41,44 @@ export function defaultProgress(): ProgressState {
 
 function normalize(raw: Partial<ProgressState>): ProgressState {
   const base = defaultProgress()
+  const maxUnlock = curriculum.length
+  const unlocked = typeof raw.unlockedUnitIndex === 'number' && Number.isFinite(raw.unlockedUnitIndex)
+    ? Math.max(0, Math.min(maxUnlock, Math.floor(raw.unlockedUnitIndex)))
+    : base.unlockedUnitIndex
+  const completedLessons = Array.isArray(raw.completedLessons)
+    ? [...new Set(raw.completedLessons.filter((k): k is string => typeof k === 'string'))]
+    : []
+  const drawingPassed = Array.isArray(raw.drawingPassed)
+    ? [...new Set(raw.drawingPassed.filter((k): k is string => typeof k === 'string'))]
+    : []
+  const weakItems = Array.isArray(raw.weakItems)
+    ? [...new Set(raw.weakItems.filter((k): k is string => typeof k === 'string'))]
+    : []
+  const quizScores = Array.isArray(raw.quizScores)
+    ? raw.quizScores.filter((q): q is QuizScore => !!q && typeof q === 'object' && typeof q.unitId === 'string')
+    : []
+  const streakRaw = raw.streak && typeof raw.streak === 'object' ? raw.streak : {}
+  const dailyRaw = raw.dailyGoal && typeof raw.dailyGoal === 'object' ? raw.dailyGoal : {}
   return {
     ...base,
-    ...raw,
     version: 1,
-    completedLessons: Array.isArray(raw.completedLessons) ? raw.completedLessons : [],
-    drawingPassed: Array.isArray(raw.drawingPassed) ? raw.drawingPassed : [],
-    quizScores: Array.isArray(raw.quizScores) ? raw.quizScores : [],
-    weakItems: Array.isArray(raw.weakItems) ? raw.weakItems : [],
-    streak: { ...base.streak, ...(raw.streak ?? {}) },
-    memory: raw.memory && typeof raw.memory === 'object' ? raw.memory : {},
-    dailyGoal: { ...base.dailyGoal, ...(raw.dailyGoal ?? {}) },
+    completedLessons,
+    drawingPassed,
+    unlockedUnitIndex: unlocked,
+    quizScores,
+    weakItems,
+    lastVisited: typeof raw.lastVisited === 'string' ? raw.lastVisited : null,
+    streak: {
+      current: Math.max(0, Number(streakRaw.current) || 0),
+      best: Math.max(0, Number(streakRaw.best) || 0),
+      lastActiveDate: typeof streakRaw.lastActiveDate === 'string' ? streakRaw.lastActiveDate : null,
+    },
+    memory: raw.memory && typeof raw.memory === 'object' && !Array.isArray(raw.memory) ? raw.memory : {},
+    dailyGoal: {
+      date: typeof dailyRaw.date === 'string' ? dailyRaw.date : base.dailyGoal.date,
+      target: Math.max(1, Math.min(50, Number(dailyRaw.target) || 5)),
+      completed: Math.max(0, Number(dailyRaw.completed) || 0),
+    },
     onboardingDone: Boolean(raw.onboardingDone),
   }
 }
@@ -184,16 +211,22 @@ export function recordQuiz(
   }
 
   let memory = { ...state.memory }
-  for (const id of correctItems) memory = scheduleMemory(memory, id, true)
+  // Misses win over hits when the same item appears in both lists
+  const weakSet = new Set(weakItems)
+  const correctOnly = correctItems.filter((id) => !weakSet.has(id))
+  for (const id of correctOnly) memory = scheduleMemory(memory, id, true)
   for (const id of weakItems) memory = scheduleMemory(memory, id, false)
+
+  // Drop what you got right; keep / add what you missed (pass or fail)
+  const nextWeak = Array.from(
+    new Set([...state.weakItems.filter((w) => !correctOnly.includes(w)), ...weakItems]),
+  )
 
   const next: ProgressState = {
     ...state,
     quizScores,
     unlockedUnitIndex,
-    weakItems: passed
-      ? state.weakItems.filter((w) => !weakItems.includes(w))
-      : Array.from(new Set([...state.weakItems, ...weakItems])),
+    weakItems: nextWeak,
     streak: bumpStreak(state.streak),
     dailyGoal: bumpDailyGoal(state.dailyGoal, Math.max(1, Math.round(total / 4))),
     memory,
@@ -240,16 +273,18 @@ export function quizBest(state: ProgressState, unitId: string): number | null {
 }
 
 export function overallPercent(state: ProgressState): number {
-  const totalLessons = curriculum.reduce((n, u) => n + unitLessonKeys(u).length, 0)
+  const allKeys = new Set(curriculum.flatMap((u) => unitLessonKeys(u)))
+  const totalLessons = allKeys.size
   const totalQuizzes = curriculum.length
-  const doneLessons = state.completedLessons.length
+  const doneLessons = state.completedLessons.filter((k) => allKeys.has(k)).length
   const passedQuizzes = state.quizScores.filter((q) => q.passed).length
   const total = totalLessons + totalQuizzes
   if (total === 0) return 0
-  return Math.round(((doneLessons + passedQuizzes) / total) * 100)
+  return Math.min(100, Math.round(((doneLessons + passedQuizzes) / total) * 100))
 }
 
 export function setLastVisited(state: ProgressState, path: string): ProgressState {
+  if (state.lastVisited === path) return state
   const next = { ...state, lastVisited: path }
   saveProgress(next)
   return next
