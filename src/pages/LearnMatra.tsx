@@ -63,7 +63,7 @@ export function LearnMatra() {
         <DrawingBoard ghostGlyph={matra.example} />
       </section>
 
-      <div className="lesson-footer">
+      <div className="lesson-footer lesson-footer-sticky">
         {prev ? (
           <Link className="btn btn-ghost" to={`/unit/${unitId}/learn/${prev}`}>
             Previous
