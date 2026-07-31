@@ -51,15 +51,16 @@ export function LearnLetter() {
   }
 
   return (
-    <div className="lesson">
+    <div className="lesson lesson-draw">
       <div className="lesson-nav">
         <Link to="/">← Path</Link>
-        <span>
+        <span className="lesson-nav-title">
           {unit.title} · {letter.name}
         </span>
       </div>
 
-      <div className="glyph-stage">
+      {/* Compact header on phones; full stage on desktop */}
+      <div className="glyph-stage glyph-stage-desktop">
         <p className="eyebrow">Letter</p>
         <div className="glyph-display" lang="pa">
           {letter.glyph}
@@ -76,17 +77,29 @@ export function LearnLetter() {
         <PronounceCompare nativeSrc={letter.audio} label="Say it like the recording" />
       </div>
 
-      <section className="write-section">
-        <h2>1. Watch · 2. Trace · 3. Check</h2>
-        <p>
-          Watch the letter appear, then trace the faint guide. Tap <strong>Check drawing</strong> — score
-          at least {DRAW_PASS_PERCENT}% to unlock Next.
-          {canAdvance ? ' Drawing passed for this letter.' : ''}
+      <div className="glyph-strip glyph-strip-mobile">
+        <div className="glyph-strip-char" lang="pa">
+          {letter.glyph}
+        </div>
+        <div className="glyph-strip-meta">
+          <strong>{letter.name}</strong>
+          <span>{letter.romanization}</span>
+        </div>
+        <PlaySoundButton src={letter.audio} label="Play" className="btn btn-accent btn-compact" />
+      </div>
+
+      <section className="write-section write-primary">
+        <div className="write-head">
+          <h2>Trace & check</h2>
+          <label className="guide-toggle">
+            <input type="checkbox" checked={showGuide} onChange={(e) => setShowGuide(e.target.checked)} />
+            Guide
+          </label>
+        </div>
+        <p className="write-blurb">
+          Trace the letter, then <strong>Check</strong> — need {DRAW_PASS_PERCENT}%+ to unlock Next.
+          {canAdvance ? ' Passed.' : ''}
         </p>
-        <label className="guide-toggle">
-          <input type="checkbox" checked={showGuide} onChange={(e) => setShowGuide(e.target.checked)} />
-          Show guide (off = memory practice)
-        </label>
         <DrawingBoard
           key={key}
           ghostGlyph={letter.glyph}
@@ -96,10 +109,21 @@ export function LearnLetter() {
         />
       </section>
 
-      <div className="lesson-footer">
+      <details className="mobile-extras">
+        <summary>Sound tip & pronounce</summary>
+        <p className="hint">{letter.soundHint}</p>
+        {letter.examplePa && letter.exampleEn && (
+          <p className="roman">
+            e.g. {letter.examplePa} ({letter.exampleEn})
+          </p>
+        )}
+        <PronounceCompare nativeSrc={letter.audio} label="Say it like the recording" />
+      </details>
+
+      <div className="lesson-footer lesson-footer-sticky">
         {prev ? (
           <Link className="btn btn-ghost" to={`/unit/${unitId}/learn/${prev}`}>
-            Previous
+            Prev
           </Link>
         ) : (
           <span />
@@ -112,7 +136,7 @@ export function LearnLetter() {
             title={canAdvance ? undefined : `Pass the drawing check first (${DRAW_PASS_PERCENT}%+)`}
             onClick={() => markAndGo(`/unit/${unitId}/learn/${next}`)}
           >
-            {done ? 'Next' : 'Mark done & next'}
+            {done ? 'Next' : 'Done & next'}
           </button>
         ) : (
           <button
@@ -126,11 +150,6 @@ export function LearnLetter() {
           </button>
         )}
       </div>
-      {!canAdvance && (
-        <p className="center-note hint">
-          Next stays locked until your drawing scores {DRAW_PASS_PERCENT}% or higher.
-        </p>
-      )}
     </div>
   )
 }

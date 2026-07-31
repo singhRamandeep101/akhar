@@ -68,8 +68,10 @@ p {
 .app-shell {
   max-width: 720px;
   margin: 0 auto;
-  padding: 0 1rem 3rem;
+  padding: 0 max(1rem, env(safe-area-inset-right)) calc(3rem + env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .topbar {
@@ -77,12 +79,12 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 0 0.75rem;
+  padding: calc(0.65rem + env(safe-area-inset-top)) 0 0.65rem;
   position: sticky;
   top: 0;
   z-index: 10;
   backdrop-filter: blur(10px);
-  background: linear-gradient(to bottom, rgba(244, 247, 241, 0.92), rgba(244, 247, 241, 0.7));
+  background: linear-gradient(to bottom, rgba(244, 247, 241, 0.94), rgba(244, 247, 241, 0.78));
 }
 
 .brand {
@@ -320,10 +322,18 @@ p {
   cursor: pointer;
   font-family: var(--font-ui);
   font-weight: 600;
-  font-size: 0.95rem;
-  padding: 0.7rem 1.05rem;
+  font-size: 1rem;
+  padding: 0.75rem 1.05rem;
+  min-height: 44px;
   border-radius: 12px;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-compact {
+  min-height: 40px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
 }
 
 .btn:active {
@@ -564,7 +574,8 @@ p {
   border: 1px solid rgba(20, 36, 26, 0.12);
   background: rgba(255, 255, 255, 0.7);
   border-radius: 14px;
-  padding: 0.9rem 1rem;
+  padding: 0.95rem 1rem;
+  min-height: 52px;
   font-family: var(--font-ui);
   font-size: 1.05rem;
   font-weight: 600;
@@ -572,6 +583,7 @@ p {
   text-align: left;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .option:hover:not(:disabled) {
@@ -868,10 +880,26 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.due-actions li {
+.glyph-strip-mobile,
+.mobile-extras {
+  display: none;
+}
+
+.write-head {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.write-head h2 {
+  margin: 0;
+}
+
+.write-blurb {
+  font-size: 0.92rem;
+  margin-bottom: 0.65rem;
 }
 
 @keyframes rise {
@@ -895,19 +923,268 @@ p {
   }
 }
 
-@media (max-width: 480px) {
-  .habit-row {
-    grid-template-columns: 1fr;
+/* —— Mobile / tablet —— */
+@media (max-width: 720px) {
+  body {
+    background-attachment: scroll;
   }
 
-  .path-actions .btn,
-  .lesson-footer .btn {
-    flex: 1;
+  .app-shell {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  .brand-text small {
+    display: none;
+  }
+
+  .top-progress-track {
+    width: 48px;
+  }
+
+  .streak-pill {
+    font-size: 0.75rem;
+  }
+
+  .hero-path h1 {
+    font-size: 1.65rem;
+  }
+
+  .lede {
+    font-size: 0.95rem;
+  }
+
+  .habit-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .habit-chip {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .habit-num {
+    font-size: 1.25rem;
+  }
+
+  .mini-track {
+    width: 5rem;
+    margin-top: 0;
+  }
+
+  .path-item {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    padding: 0.9rem;
+  }
+
+  .path-index {
+    width: 1.85rem;
+    height: 1.85rem;
+    font-size: 0.85rem;
+  }
+
+  .path-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .path-actions .btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .quick-links {
+    flex-direction: column;
+  }
+
+  .quick-links .btn {
+    width: 100%;
     text-align: center;
   }
 
-  .drawing-frame canvas,
+  /* Lesson: drawing first */
+  .glyph-stage-desktop {
+    display: none;
+  }
+
+  .glyph-strip-mobile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.85rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(20, 36, 26, 0.1);
+    box-shadow: var(--shadow);
+  }
+
+  .glyph-strip-char {
+    font-family: var(--font-pa);
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--teal-deep);
+    min-width: 2.6rem;
+    text-align: center;
+  }
+
+  .glyph-strip-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+  }
+
+  .glyph-strip-meta strong {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+  }
+
+  .glyph-strip-meta span {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+  }
+
+  .write-section {
+    margin-top: 0;
+  }
+
+  .write-primary {
+    order: 0;
+  }
+
+  .mobile-extras {
+    display: block;
+    margin: 1rem 0;
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(20, 36, 26, 0.08);
+  }
+
+  .mobile-extras summary {
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    padding: 0.25rem 0;
+  }
+
+  .mobile-extras summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-extras[open] summary {
+    margin-bottom: 0.5rem;
+  }
+
+  .drawing-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 0.4rem;
+  }
+
+  .drawing-toolbar .btn {
+    width: 100%;
+    padding: 0.65rem 0.4rem;
+    font-size: 0.9rem;
+  }
+
+  .drawing-frame {
+    border-radius: 12px;
+    border-width: 3px;
+    overscroll-behavior: none;
+  }
+
   .draw-canvas {
-    min-height: 280px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .lesson-footer-sticky {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    margin: 0;
+    padding: 0.65rem max(1rem, env(safe-area-inset-left))
+      calc(0.65rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
+    background: linear-gradient(to top, rgba(244, 247, 241, 0.97), rgba(244, 247, 241, 0.9));
+    border-top: 1px solid rgba(20, 36, 26, 0.1);
+    backdrop-filter: blur(12px);
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 0.5rem;
+  }
+
+  .lesson-footer-sticky .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .lesson-nav-title {
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .options {
+    gap: 0.55rem;
+  }
+
+  .option {
+    font-size: 1.55rem;
+    padding: 1rem 0.75rem;
+  }
+
+  .quiz-glyph {
+    font-size: clamp(3.5rem, 28vw, 5.5rem);
+  }
+
+  .onboard-card {
+    max-height: min(90dvh, 36rem);
+    overflow: auto;
+  }
+
+  .due-list {
+    flex-direction: column;
+  }
+
+  .due-list a,
+  .due-list > span {
+    border-radius: 12px;
+    width: 100%;
+  }
+
+  .pronounce-compare .path-actions {
+    flex-direction: column;
+  }
+
+  .pronounce-compare .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-path {
+    padding-top: 0.5rem;
+  }
+
+  .settings-card .path-actions {
+    flex-direction: column;
+  }
+
+  .settings-card .btn {
+    width: 100%;
   }
 }

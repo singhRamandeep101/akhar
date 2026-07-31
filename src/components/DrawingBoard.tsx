@@ -170,9 +170,14 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     if (!parent) return
     const gen = ++setupGen.current
     stopDemo()
-    const dpr = window.devicePixelRatio || 1
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5)
     const w = Math.max(280, parent.clientWidth)
-    const h = Math.max(260, Math.min(420, w * 0.85))
+    const mobile = window.matchMedia('(max-width: 720px)').matches
+    const vh = window.visualViewport?.height ?? window.innerHeight
+    // Phones: tall near-square slate so fingers have room; desktop stays shorter
+    const h = mobile
+      ? Math.round(Math.max(300, Math.min(vh * 0.5, w * 1.15, 520)))
+      : Math.max(260, Math.min(420, w * 0.85))
     canvas.width = w * dpr
     canvas.height = h * dpr
     canvas.style.width = `${w}px`
@@ -212,9 +217,11 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
       void setup()
     }
     window.addEventListener('resize', onResize)
+    window.visualViewport?.addEventListener('resize', onResize)
     return () => {
       setupGen.current += 1
       window.removeEventListener('resize', onResize)
+      window.visualViewport?.removeEventListener('resize', onResize)
       stopDemo()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,7 +235,13 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const { w, h } = sizeRef.current
+    const scaleX = w / Math.max(1, rect.width)
+    const scaleY = h / Math.max(1, rect.height)
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    }
   }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -288,13 +301,13 @@ export const DrawingBoard = forwardRef<DrawingBoardHandle, Props>(function Drawi
     <div className={`drawing-board ${className}`}>
       <div className="drawing-toolbar">
         <button type="button" className="btn btn-ghost" onClick={runDemo} disabled={demoPlaying || !ready}>
-          {demoPlaying ? 'Watching…' : 'Replay demo'}
+          {demoPlaying ? 'Watching…' : 'Replay'}
         </button>
         <button type="button" className="btn btn-ghost" onClick={clear} disabled={demoPlaying}>
           Clear
         </button>
         <button type="button" className="btn btn-accent" onClick={() => check()} disabled={demoPlaying || !ready}>
-          Check drawing
+          Check
         </button>
       </div>
       <div className="drawing-frame">
